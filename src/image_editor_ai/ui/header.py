@@ -55,11 +55,12 @@ class Header(tk.Frame):
         # Placeholder for an upcoming AI feature.
         self._button(bar, "AI Edit", None)
 
-    def set_describe_busy(self, busy: bool) -> None:
+    def set_describe_state(self, enabled: bool, busy: bool = False) -> None:
+        active = enabled and not busy
         self.describe_button.config(
             text="Generating…" if busy else "Generate Description",
-            state=tk.DISABLED if busy else tk.NORMAL,
-            cursor="" if busy else "hand2",
+            state=tk.NORMAL if active else tk.DISABLED,
+            cursor="hand2" if active else "",
         )
 
     @staticmethod

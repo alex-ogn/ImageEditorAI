@@ -43,6 +43,7 @@ class MainWindow(tk.Tk):
         self.description_panel.pack(side=tk.RIGHT, fill=tk.Y)
         self.image_view = ImageView(self)
         self.image_view.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self._refresh_describe_button()
 
         self.bind_all(shortcut_event("o"), lambda _e: self.open_image())
         self.protocol("WM_DELETE_WINDOW", self.destroy)
@@ -74,18 +75,22 @@ class MainWindow(tk.Tk):
         self.image_view.set_image(image)
         self.title(f"{path.name} — {APP_NAME}")
         self.description_panel.show_hint('Click "Generate Description" to describe this image.')
+        self._refresh_describe_button()
+
+    def _refresh_describe_button(self) -> None:
+        # Only usable with an open image; shown as busy while a request runs.
+        self.header.set_describe_state(
+            enabled=self.image_view.image is not None, busy=self._describe_job is not None
+        )
 
     def generate_description(self) -> None:
         image = self.image_view.image
-        if image is None:
-            messagebox.showinfo(APP_NAME, "Open an image first.", parent=self)
-            return
-        if self._describe_job is not None:
-            return
-        self.header.set_describe_busy(True)
+        if image is None or self._describe_job is not None:
+            return  # the button is disabled in these states
         self.description_panel.show_hint("Generating description…")
         self._describe_job = self._executor.submit(describe_image, self.settings, image.copy())
         self._describe_image = image
+        self._refresh_describe_button()
         self.after(POLL_MS, self._poll_description)
 
     def _poll_description(self) -> None:
@@ -96,7 +101,7 @@ class MainWindow(tk.Tk):
             self.after(POLL_MS, self._poll_description)
             return
         self._describe_job = None
-        self.header.set_describe_busy(False)
+        self._refresh_describe_button()
         if self._describe_image is not self.image_view.image:
             return  # a different image was opened meanwhile; drop the stale result
         try:
