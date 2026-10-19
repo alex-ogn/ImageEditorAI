@@ -48,3 +48,32 @@ def load_image(path: str | Path) -> Image.Image:
     with Image.open(Path(path)) as img:
         img.load()
         return ImageOps.exif_transpose(img)
+
+
+# Formats offered by "Save As…"; other extensions Pillow knows also work.
+SAVE_FORMATS = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG", ".webp": "WEBP"}
+
+
+def edited_filename(name: str | Path) -> str:
+    """Default "Save As…" name for an image opened as `name`, e.g. 'photo-edited.png'."""
+    stem = Path(name).stem or "image"
+    return f"{stem}-edited.png"
+
+
+def save_image(image: Image.Image, path: str | Path) -> Path:
+    """Save `image` at full resolution, picking the format from the file extension.
+
+    JPEG has no alpha channel, so transparent images are flattened onto white first.
+    """
+    path = Path(path)
+    ext = path.suffix.lower()
+    fmt = SAVE_FORMATS.get(ext) or Image.registered_extensions().get(ext)
+    if fmt is None:
+        raise ValueError(f"Unsupported file extension: {path.suffix or '(none)'}")
+    if fmt == "JPEG" and image.mode not in ("RGB", "L"):
+        rgba = image.convert("RGBA")
+        flat = Image.new("RGB", rgba.size, "white")
+        flat.paste(rgba, mask=rgba.getchannel("A"))
+        image = flat
+    image.save(path, format=fmt)
+    return path

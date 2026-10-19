@@ -8,12 +8,15 @@ from image_editor_ai import APP_NAME
 from image_editor_ai.platform_utils import shortcut_label
 from image_editor_ai.ui import theme
 
+SAVE_LABEL = f"Save As…  ({shortcut_label('s')})"
+
 
 class Header(tk.Frame):
     def __init__(
         self,
         master: tk.Misc,
         on_open: Callable[[], None],
+        on_save: Callable[[], None],
         on_describe: Callable[[], None],
         on_edit: Callable[[], None],
         on_detect: Callable[[], None],
@@ -22,7 +25,7 @@ class Header(tk.Frame):
         self.pack_propagate(False)
 
         self._build_logo()
-        self._build_command_bar(on_open, on_describe, on_edit, on_detect)
+        self._build_command_bar(on_open, on_save, on_describe, on_edit, on_detect)
 
     def _build_logo(self) -> None:
         base = tkfont.nametofont("TkDefaultFont")
@@ -49,6 +52,7 @@ class Header(tk.Frame):
     def _build_command_bar(
         self,
         on_open: Callable[[], None],
+        on_save: Callable[[], None],
         on_describe: Callable[[], None],
         on_edit: Callable[[], None],
         on_detect: Callable[[], None],
@@ -57,9 +61,13 @@ class Header(tk.Frame):
         bar.pack(side=tk.LEFT, fill=tk.Y, pady=10)
 
         self._button(bar, f"Open…  ({shortcut_label('o')})", on_open)
+        self.save_button = self._button(bar, SAVE_LABEL, on_save)
         self.describe_button = self._button(bar, "Generate Description", on_describe)
         self.edit_button = self._button(bar, "AI Edit", on_edit)
         self.detect_button = self._button(bar, "Detect Objects", on_detect)
+
+    def set_save_state(self, enabled: bool) -> None:
+        self._set_state(self.save_button, SAVE_LABEL, SAVE_LABEL, enabled, False)
 
     def set_describe_state(self, enabled: bool, busy: bool = False) -> None:
         self._set_state(

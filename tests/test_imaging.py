@@ -1,7 +1,13 @@
 import pytest
 from PIL import Image
 
-from image_editor_ai.imaging import box_to_canvas, fit_size, load_image
+from image_editor_ai.imaging import (
+    box_to_canvas,
+    edited_filename,
+    fit_size,
+    load_image,
+    save_image,
+)
 
 
 @pytest.mark.parametrize(
@@ -51,3 +57,42 @@ def test_box_to_canvas_landscape_in_wide_box():
 def test_box_to_canvas_portrait_in_tall_box():
     # 100x200 image fitted into 300x900 -> 300x600, centered with y offset 150.
     assert box_to_canvas((0.5, 0.25, 1.0, 0.5), 100, 200, 300, 900) == (150, 300, 300, 450)
+
+
+@pytest.mark.parametrize(
+    ("name", "fmt"),
+    [("out.png", "PNG"), ("out.JPG", "JPEG"), ("out.jpeg", "JPEG"), ("out.webp", "WEBP")],
+)
+def test_save_image_picks_format_from_extension(tmp_path, name, fmt):
+    path = save_image(Image.new("RGB", (30, 20), "red"), tmp_path / name)
+    with Image.open(path) as saved:
+        assert saved.format == fmt
+        assert saved.size == (30, 20)
+
+
+def test_save_image_flattens_alpha_for_jpeg(tmp_path):
+    image = Image.new("RGBA", (10, 10), (0, 0, 0, 0))  # fully transparent
+    path = save_image(image, tmp_path / "flat.jpg")
+    with Image.open(path) as saved:
+        assert saved.mode == "RGB"
+        assert all(c > 250 for c in saved.getpixel((5, 5)))  # flattened onto white
+
+
+def test_save_image_keeps_alpha_for_png(tmp_path):
+    image = Image.new("RGBA", (10, 10), (10, 20, 30, 40))
+    path = save_image(image, tmp_path / "alpha.png")
+    with Image.open(path) as saved:
+        assert saved.mode == "RGBA"
+        assert saved.getpixel((0, 0)) == (10, 20, 30, 40)
+
+
+def test_save_image_rejects_unknown_extension(tmp_path):
+    with pytest.raises(ValueError):
+        save_image(Image.new("RGB", (5, 5)), tmp_path / "image.xyz")
+    with pytest.raises(ValueError):
+        save_image(Image.new("RGB", (5, 5)), tmp_path / "noextension")
+
+
+def test_edited_filename():
+    assert edited_filename("photo.jpg") == "photo-edited.png"
+    assert edited_filename("my.holiday.webp") == "my.holiday-edited.png"

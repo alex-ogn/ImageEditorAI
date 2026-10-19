@@ -34,7 +34,11 @@ over images. Built with Python, tkinter and Pillow; AI features use models from
   match, showing its confidence. It needs an open image and a generated description.
 - **AI Edit** — type a modification request in the bottom panel (for example "Make the sky
   a sunset"). The edited image replaces the current one, so further edits build on it.
-  Edited images are not saved to disk.
+  Use **Save As…** to keep the result.
+- **Save As…** (header button, File menu, `Ctrl+S` / `⌘S`) — saves the image currently shown, at full
+  resolution, as PNG, JPEG or WEBP (picked from the file extension; transparency is
+  flattened onto white for JPEG). The suggested name is the opened file's name plus
+  `-edited.png`.
 
 ## Run
 

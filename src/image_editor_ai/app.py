@@ -16,7 +16,12 @@ from image_editor_ai.ai.image_ai import (
     format_detection,
 )
 from image_editor_ai.config import load_settings
-from image_editor_ai.imaging import SUPPORTED_EXTENSIONS, load_image
+from image_editor_ai.imaging import (
+    SUPPORTED_EXTENSIONS,
+    edited_filename,
+    load_image,
+    save_image,
+)
 from image_editor_ai.platform_utils import IS_MACOS, shortcut_event, shortcut_label
 from image_editor_ai.ui.description_panel import DescriptionPanel
 from image_editor_ai.ui.header import Header
@@ -25,6 +30,12 @@ from image_editor_ai.ui.prompt_panel import PromptPanel
 
 FILE_TYPES = [
     ("Images", " ".join(f"*{ext}" for ext in SUPPORTED_EXTENSIONS)),
+    ("All files", "*"),
+]
+SAVE_FILE_TYPES = [
+    ("PNG image", "*.png"),
+    ("JPEG image", "*.jpg *.jpeg"),
+    ("WEBP image", "*.webp"),
     ("All files", "*"),
 ]
 POLL_MS = 100
@@ -40,7 +51,6 @@ class MainWindow(tk.Tk):
 
         # AI requests run off the Tk thread; at most one of each kind at a time.
         self._executor = ThreadPoolExecutor(max_workers=3)
-        self._image_name = ""
         self._edit_job: Future[Image.Image] | None = None
         self._edit_image: Image.Image | None = None
         self._edit_request = ""
@@ -50,11 +60,14 @@ class MainWindow(tk.Tk):
         self._detect_image: Image.Image | None = None
         # Generated description of the image currently shown (None until generated).
         self._description: str | None = None
+        # File name the current image was opened from; the default for "Save As…".
+        self._image_name = ""
 
         self._build_menu()
         self.header = Header(
             self,
             on_open=self.open_image,
+            on_save=self.save_image_as,
             on_describe=self.generate_description,
             on_edit=self.ai_edit,
             on_detect=self.detect_objects,
@@ -74,6 +87,7 @@ class MainWindow(tk.Tk):
         self._refresh_buttons()
 
         self.bind_all(shortcut_event("o"), lambda _e: self.open_image())
+        self.bind_all(shortcut_event("s"), lambda _e: self.save_image_as())
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     def _build_menu(self) -> None:
@@ -82,6 +96,11 @@ class MainWindow(tk.Tk):
         file_menu.add_command(
             label="Open…", accelerator=shortcut_label("o"), command=self.open_image
         )
+        file_menu.add_command(
+            label="Save As…", accelerator=shortcut_label("s"), command=self.save_image_as
+        )
+        self._file_menu = file_menu
+        self._save_index = file_menu.index(tk.END)
         if not IS_MACOS:  # macOS provides Quit in the application menu
             file_menu.add_separator()
             file_menu.add_command(label="Exit", command=self.destroy)
@@ -112,8 +131,32 @@ class MainWindow(tk.Tk):
         self.prompt_panel.set_status(status, highlight)
         self._refresh_buttons()
 
+    def save_image_as(self) -> None:
+        image = self.image_view.image
+        if image is None:
+            return  # the menu item is disabled without an image
+        filename = filedialog.asksaveasfilename(
+            parent=self,
+            title="Save image as",
+            filetypes=SAVE_FILE_TYPES,
+            defaultextension=".png",
+            initialfile=edited_filename(self._image_name),
+        )
+        if not filename:
+            return
+        path = Path(filename)
+        try:
+            save_image(image, path)  # the full-resolution image, not the display copy
+        except Exception as exc:  # unknown extension, Pillow and OS errors
+            messagebox.showerror(APP_NAME, f"Could not save {path.name}:\n{exc}", parent=self)
+
     def _refresh_buttons(self) -> None:
         has_image = self.image_view.image is not None
+        # Saving needs an open image (menu item and header button).
+        self._file_menu.entryconfigure(
+            self._save_index, state=tk.NORMAL if has_image else tk.DISABLED
+        )
+        self.header.set_save_state(enabled=has_image)
         # Description needs an open image; shown as busy while a request runs.
         self.header.set_describe_state(enabled=has_image, busy=self._describe_job is not None)
         # Detection also needs this image's description and a question to ask.
