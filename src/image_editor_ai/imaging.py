@@ -6,6 +6,8 @@ from PIL import Image, ImageOps
 
 SUPPORTED_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".tiff")
 
+Box = tuple[float, float, float, float]  # left, top, right, bottom as image fractions (0..1)
+
 
 def fit_size(img_w: int, img_h: int, box_w: int, box_h: int) -> tuple[int, int]:
     """Largest size that fits inside the box while keeping the image's aspect ratio.
@@ -19,6 +21,26 @@ def fit_size(img_w: int, img_h: int, box_w: int, box_h: int) -> tuple[int, int]:
         return (0, 0)
     scale = min(box_w / img_w, box_h / img_h)
     return (max(1, round(img_w * scale)), max(1, round(img_h * scale)))
+
+
+def fitted_origin(fitted_w: int, fitted_h: int, box_w: int, box_h: int) -> tuple[int, int]:
+    """Top-left corner of a fitted image centered in the box."""
+    return ((box_w - fitted_w) // 2, (box_h - fitted_h) // 2)
+
+
+def box_to_canvas(
+    box: Box, img_w: int, img_h: int, box_w: int, box_h: int
+) -> tuple[int, int, int, int]:
+    """Map a (left, top, right, bottom) box in image fractions onto the fitted, centered image."""
+    fitted_w, fitted_h = fit_size(img_w, img_h, box_w, box_h)
+    x, y = fitted_origin(fitted_w, fitted_h, box_w, box_h)
+    left, top, right, bottom = box
+    return (
+        x + round(left * fitted_w),
+        y + round(top * fitted_h),
+        x + round(right * fitted_w),
+        y + round(bottom * fitted_h),
+    )
 
 
 def load_image(path: str | Path) -> Image.Image:

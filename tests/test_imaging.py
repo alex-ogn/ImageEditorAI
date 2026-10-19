@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from image_editor_ai.imaging import fit_size, load_image
+from image_editor_ai.imaging import box_to_canvas, fit_size, load_image
 
 
 @pytest.mark.parametrize(
@@ -40,3 +40,14 @@ def test_load_image_applies_exif_orientation(tmp_path):
 
     img = load_image(path)
     assert img.size == (20, 40)
+
+
+def test_box_to_canvas_landscape_in_wide_box():
+    # 200x100 image fitted into 800x200 -> 400x200, centered with x offset 200.
+    assert box_to_canvas((0.0, 0.0, 1.0, 1.0), 200, 100, 800, 200) == (200, 0, 600, 200)
+    assert box_to_canvas((0.25, 0.5, 0.75, 1.0), 200, 100, 800, 200) == (300, 100, 500, 200)
+
+
+def test_box_to_canvas_portrait_in_tall_box():
+    # 100x200 image fitted into 300x900 -> 300x600, centered with y offset 150.
+    assert box_to_canvas((0.5, 0.25, 1.0, 0.5), 100, 200, 300, 900) == (150, 300, 300, 450)

@@ -14,6 +14,9 @@ DEFAULT_DESCRIBE_PROMPT = (
     "colors, lighting, mood and any visible text. Write clear, well-structured prose "
     "in a few short paragraphs, without preamble."
 )
+DEFAULT_DETECT_MODEL = "typesafe/jev-1.14"
+DEFAULT_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
+DEFAULT_DETECT_PRESENCE_THRESHOLD = 0.5
 
 
 class ConfigError(RuntimeError):
@@ -26,6 +29,9 @@ class Settings:
     model: str | None
     base_url: str
     describe_prompt: str = DEFAULT_DESCRIBE_PROMPT
+    detect_model: str = DEFAULT_DETECT_MODEL
+    decisions_url: str = DEFAULT_DECISIONS_URL
+    detect_presence_threshold: float = DEFAULT_DETECT_PRESENCE_THRESHOLD
 
     def require_api_key(self) -> str:
         if not self.api_key:
@@ -40,6 +46,16 @@ class Settings:
         return self.model
 
 
+def _float_env(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        raise ConfigError(f"{name} must be a number, got {value!r}.") from None
+
+
 def load_settings(env_file: Path | None = None) -> Settings:
     load_dotenv(env_file or PROJECT_ROOT / ".env")
     return Settings(
@@ -47,4 +63,9 @@ def load_settings(env_file: Path | None = None) -> Settings:
         model=os.getenv("OPENROUTER_MODEL") or DEFAULT_MODEL,
         base_url=os.getenv("OPENROUTER_BASE_URL") or DEFAULT_BASE_URL,
         describe_prompt=os.getenv("DESCRIBE_PROMPT") or DEFAULT_DESCRIBE_PROMPT,
+        detect_model=os.getenv("DETECT_MODEL") or DEFAULT_DETECT_MODEL,
+        decisions_url=os.getenv("OPENROUTER_DECISIONS_URL") or DEFAULT_DECISIONS_URL,
+        detect_presence_threshold=_float_env(
+            "DETECT_PRESENCE_THRESHOLD", DEFAULT_DETECT_PRESENCE_THRESHOLD
+        ),
     )

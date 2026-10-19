@@ -1,4 +1,4 @@
-"""Minimal OpenRouter client (OpenAI-compatible chat completions API)."""
+"""Minimal OpenRouter client: chat completions and the Decisions API."""
 
 import httpx
 
@@ -24,9 +24,22 @@ def extract_content(data: dict) -> str:
     return content.strip()
 
 
+def extract_answers(data: dict) -> dict:
+    """Typed answers of a Decisions API response, keyed by question name."""
+    if "error" in data:
+        error = data["error"]
+        message = error.get("message", "unknown error") if isinstance(error, dict) else error
+        raise OpenRouterError(f"OpenRouter error: {message}")
+    answers = data.get("answers")
+    if not isinstance(answers, dict) or not answers:
+        raise OpenRouterError("Unexpected response from the OpenRouter Decisions API.")
+    return answers
+
+
 class OpenRouterClient:
     def __init__(self, settings: Settings, timeout: float = 120.0) -> None:
         self._model = settings.require_model()
+        self._decisions_url = settings.decisions_url
         self._http = httpx.Client(
             base_url=settings.base_url,
             timeout=timeout,
@@ -46,6 +59,20 @@ class OpenRouterClient:
     def complete(self, messages: list[dict], **extra) -> str:
         """Send a chat request and return the reply text."""
         return extract_content(self.chat(messages, **extra))
+
+    def decide(self, model: str, state: list, questions: dict) -> dict:
+        """Ask a Decisions model typed questions about `state`; returns its answers."""
+        # An absolute URL bypasses base_url, so the same auth headers are reused.
+        response = self._http.post(
+            self._decisions_url, json={"model": model, "state": state, "questions": questions}
+        )
+        try:
+            data = response.json()
+        except ValueError:  # body is not JSON
+            data = {}
+        if response.is_error and "error" not in data:
+            response.raise_for_status()
+        return extract_answers(data)
 
     def close(self) -> None:
         self._http.close()
