@@ -30,6 +30,10 @@ over images. Built with Python, tkinter and Pillow; AI features use models from
 - **Detect Objects** — type a question in the bottom panel (for example "Where is the dog?").
   Jev gets the image, its description and your question, and draws a box around the best
   match, showing its confidence. It needs an open image and a generated description.
+- **Save As…** (header button, File menu, `Ctrl+S` / `⌘S`) — saves the image currently shown, at full
+  resolution, as PNG, JPEG or WEBP (picked from the file extension; transparency is
+  flattened onto white for JPEG). The suggested name is the opened file's name plus
+  `-edited.png`.
 
 ## Run
 

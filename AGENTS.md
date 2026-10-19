@@ -39,7 +39,7 @@ for creative and interactive AI features over images.
 src/image_editor_ai/
   app.py            MainWindow + main() entry point
   config.py         .env loading, Settings
-  imaging.py        pure image helpers (fit_size, load_image)
+  imaging.py        pure image helpers (fit_size, load_image, save_image)
   platform_utils.py OS detection, shortcut helpers
   ui/header.py      logo + command bar
   ui/image_view.py  canvas that shows the fitted image
