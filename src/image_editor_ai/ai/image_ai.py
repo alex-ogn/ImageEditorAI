@@ -1,11 +1,11 @@
-"""AI features over images: upload preparation, descriptions and object detection."""
+"""AI features over images: upload preparation, descriptions, object detection, edits."""
 
 import base64
 import io
 import math
 from dataclasses import dataclass
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from image_editor_ai.ai.openrouter import OpenRouterClient, OpenRouterError
 from image_editor_ai.config import Settings
@@ -18,6 +18,10 @@ MAX_UPLOAD_SIDE = 1536
 JEV_MIN_SIDE = 256
 JEV_MAX_SIDE = 1568
 JEV_MIN_PIXELS = 78_400
+
+# Image edits: the model reasons before rendering, so allow a long request.
+EDIT_TIMEOUT_S = 300.0
+EDIT_JPEG_QUALITY = 95
 
 # Question names in the Decisions request.
 PRESENCE_QUESTION = "present"
@@ -41,9 +45,9 @@ def prepare_for_upload(image: Image.Image, max_side: int = MAX_UPLOAD_SIDE) -> I
     return prepared
 
 
-def image_to_data_url(image: Image.Image, fmt: str = "PNG") -> str:
+def image_to_data_url(image: Image.Image, fmt: str = "PNG", **save_options) -> str:
     buffer = io.BytesIO()
-    image.save(buffer, format=fmt)
+    image.save(buffer, format=fmt, **save_options)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/{fmt.lower()};base64,{encoded}"
 
@@ -165,3 +169,34 @@ def detect_object(
     finally:
         client.close()
     return parse_detection(answers, settings.detect_presence_threshold)
+
+
+def build_edit_prompt(template: str, request: str) -> str:
+    """Insert the user's modification request into the edit prompt template."""
+    request = request.strip()
+    if "{request}" in template:
+        return template.replace("{request}", request)
+    return f"{template.rstrip()} {request}"
+
+
+def decode_image(data: bytes) -> Image.Image:
+    """Open an image file from bytes fully into memory, ready for display."""
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img.load()
+            image = ImageOps.exif_transpose(img)
+    except OSError as exc:  # Pillow's UnidentifiedImageError is an OSError
+        raise OpenRouterError("The model returned an image that could not be read.") from exc
+    return image if image.mode in ("RGB", "RGBA") else image.convert("RGBA")
+
+
+def edit_image(settings: Settings, image: Image.Image, request: str) -> Image.Image:
+    """Apply the user's modification request to the image with the configured edit model."""
+    reference = image_to_data_url(prepare_for_upload(image), "JPEG", quality=EDIT_JPEG_QUALITY)
+    prompt = build_edit_prompt(settings.edit_prompt, request)
+    client = OpenRouterClient(settings, timeout=EDIT_TIMEOUT_S)
+    try:
+        images = client.generate_images(settings.edit_model, prompt, [reference])
+    finally:
+        client.close()
+    return decode_image(images[0])

@@ -1,3 +1,5 @@
+import io
+
 import pytest
 from PIL import Image
 
@@ -10,7 +12,9 @@ from image_editor_ai.ai.image_ai import (
     PRESENCE_QUESTION,
     Detection,
     build_detection_request,
+    build_edit_prompt,
     build_image_message,
+    decode_image,
     format_detection,
     parse_detection,
     prepare_for_jev,
@@ -95,3 +99,28 @@ def test_format_detection_always_shows_percentages():
     missing = Detection(found=False, presence=0.12, confidence=0.4, box=None)
     assert format_detection(found) == "Found — confidence 88% (object present: 92%)"
     assert format_detection(missing) == "Not found — object present: 12%"
+
+
+def test_build_edit_prompt_fills_placeholder():
+    template = "Edit the image: {request} Keep the rest."
+    assert build_edit_prompt(template, "  make the sky red ") == (
+        "Edit the image: make the sky red Keep the rest."
+    )
+
+
+def test_build_edit_prompt_appends_without_placeholder():
+    assert build_edit_prompt("Edit the image.", "add a hat") == "Edit the image. add a hat"
+
+
+@pytest.mark.parametrize(("fmt", "mode"), [("WEBP", "RGB"), ("PNG", "P"), ("JPEG", "L")])
+def test_decode_image_returns_displayable_image(fmt, mode):
+    buffer = io.BytesIO()
+    Image.new(mode, (64, 48)).save(buffer, format=fmt)
+    image = decode_image(buffer.getvalue())
+    assert image.size == (64, 48)
+    assert image.mode in ("RGB", "RGBA")
+
+
+def test_decode_image_rejects_garbage():
+    with pytest.raises(OpenRouterError):
+        decode_image(b"not an image")

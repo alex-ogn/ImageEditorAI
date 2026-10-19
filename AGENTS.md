@@ -44,9 +44,9 @@ src/image_editor_ai/
   ui/header.py      logo + command bar
   ui/image_view.py  canvas that shows the fitted image
   ui/description_panel.py  right-side panel with the AI image description
-  ui/question_panel.py     bottom panel for the object detection question and result
-  ai/openrouter.py  generic OpenRouter client (chat completions + Decisions API)
-  ai/image_ai.py    AI features over images (upload prep, describe, Jev object detection)
+  ui/prompt_panel.py       bottom panel: detection question, AI edit request, status line
+  ai/openrouter.py  generic OpenRouter client (chat completions, Decisions API, Image API)
+  ai/image_ai.py    AI features over images (upload prep, describe, Jev detection, edits)
 tests/              pytest tests
 ```
 

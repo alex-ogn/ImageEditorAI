@@ -17,6 +17,13 @@ DEFAULT_DESCRIBE_PROMPT = (
 DEFAULT_DETECT_MODEL = "typesafe/jev-1.14"
 DEFAULT_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 DEFAULT_DETECT_PRESENCE_THRESHOLD = 0.5
+DEFAULT_EDIT_MODEL = "meta/muse-image"
+# "{request}" is replaced by the user's modification request.
+DEFAULT_EDIT_PROMPT = (
+    "Edit the provided image as follows: {request} "
+    "Keep everything else in the image unchanged, including the composition, framing, "
+    "subjects and style."
+)
 
 
 class ConfigError(RuntimeError):
@@ -32,6 +39,8 @@ class Settings:
     detect_model: str = DEFAULT_DETECT_MODEL
     decisions_url: str = DEFAULT_DECISIONS_URL
     detect_presence_threshold: float = DEFAULT_DETECT_PRESENCE_THRESHOLD
+    edit_model: str = DEFAULT_EDIT_MODEL
+    edit_prompt: str = DEFAULT_EDIT_PROMPT
 
     def require_api_key(self) -> str:
         if not self.api_key:
@@ -68,4 +77,6 @@ def load_settings(env_file: Path | None = None) -> Settings:
         detect_presence_threshold=_float_env(
             "DETECT_PRESENCE_THRESHOLD", DEFAULT_DETECT_PRESENCE_THRESHOLD
         ),
+        edit_model=os.getenv("EDIT_MODEL") or DEFAULT_EDIT_MODEL,
+        edit_prompt=os.getenv("EDIT_PROMPT") or DEFAULT_EDIT_PROMPT,
     )

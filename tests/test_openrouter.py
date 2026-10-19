@@ -1,9 +1,15 @@
+import base64
 import json
 
 import httpx
 import pytest
 
-from image_editor_ai.ai.openrouter import OpenRouterClient, OpenRouterError, extract_content
+from image_editor_ai.ai.openrouter import (
+    OpenRouterClient,
+    OpenRouterError,
+    extract_content,
+    extract_images,
+)
 from image_editor_ai.config import DEFAULT_BASE_URL, DEFAULT_DECISIONS_URL, Settings
 
 
@@ -70,3 +76,37 @@ def test_decide_raises_http_error_without_json(monkeypatch):
 
     with pytest.raises(httpx.HTTPStatusError):
         _client(handler, monkeypatch).decide("m", [], {})
+
+
+def test_generate_images_posts_references_and_decodes(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["body"] = json.loads(request.content)
+        encoded = base64.b64encode(b"image-bytes").decode("ascii")
+        return httpx.Response(200, json={"data": [{"b64_json": encoded}]})
+
+    client = _client(handler, monkeypatch)
+    images = client.generate_images("meta/muse-image", "add a hat", ["data:image/jpeg;base64,AA=="])
+    assert images == [b"image-bytes"]
+    assert seen["url"] == f"{DEFAULT_BASE_URL}/images"
+    assert seen["body"]["model"] == "meta/muse-image"
+    assert seen["body"]["prompt"] == "add a hat"
+    assert seen["body"]["input_references"] == [
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AA=="}}
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"error": {"message": "Content policy"}},
+        {"data": []},
+        {"data": [{"b64_json": "%%% not base64"}]},
+        {},
+    ],
+)
+def test_extract_images_errors(data):
+    with pytest.raises(OpenRouterError):
+        extract_images(data)

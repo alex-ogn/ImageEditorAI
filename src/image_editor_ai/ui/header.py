@@ -15,13 +15,14 @@ class Header(tk.Frame):
         master: tk.Misc,
         on_open: Callable[[], None],
         on_describe: Callable[[], None],
+        on_edit: Callable[[], None],
         on_detect: Callable[[], None],
     ) -> None:
         super().__init__(master, bg=theme.HEADER_BG, height=theme.HEADER_HEIGHT)
         self.pack_propagate(False)
 
         self._build_logo()
-        self._build_command_bar(on_open, on_describe, on_detect)
+        self._build_command_bar(on_open, on_describe, on_edit, on_detect)
 
     def _build_logo(self) -> None:
         base = tkfont.nametofont("TkDefaultFont")
@@ -49,6 +50,7 @@ class Header(tk.Frame):
         self,
         on_open: Callable[[], None],
         on_describe: Callable[[], None],
+        on_edit: Callable[[], None],
         on_detect: Callable[[], None],
     ) -> None:
         bar = tk.Frame(self, bg=theme.HEADER_BG)
@@ -56,14 +58,16 @@ class Header(tk.Frame):
 
         self._button(bar, f"Open…  ({shortcut_label('o')})", on_open)
         self.describe_button = self._button(bar, "Generate Description", on_describe)
-        # Placeholder for an upcoming AI feature.
-        self._button(bar, "AI Edit", None)
+        self.edit_button = self._button(bar, "AI Edit", on_edit)
         self.detect_button = self._button(bar, "Detect Objects", on_detect)
 
     def set_describe_state(self, enabled: bool, busy: bool = False) -> None:
         self._set_state(
             self.describe_button, "Generate Description", "Generating…", enabled, busy
         )
+
+    def set_edit_state(self, enabled: bool, busy: bool = False) -> None:
+        self._set_state(self.edit_button, "AI Edit", "Editing…", enabled, busy)
 
     def set_detect_state(self, enabled: bool, busy: bool = False) -> None:
         self._set_state(self.detect_button, "Detect Objects", "Detecting…", enabled, busy)

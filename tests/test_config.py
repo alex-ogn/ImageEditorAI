@@ -65,3 +65,17 @@ def test_invalid_threshold_raises(tmp_path, monkeypatch):
     env.write_text("DETECT_PRESENCE_THRESHOLD=high\n")
     with pytest.raises(ConfigError):
         load_settings(env)
+
+
+def test_edit_defaults_and_overrides(tmp_path, monkeypatch):
+    for var in ("EDIT_MODEL", "EDIT_PROMPT"):
+        monkeypatch.delenv(var, raising=False)
+    defaults = load_settings(tmp_path / "missing.env")
+    assert defaults.edit_model == "meta/muse-image"
+    assert "{request}" in defaults.edit_prompt
+
+    env = tmp_path / ".env"
+    env.write_text('EDIT_MODEL=other/model\nEDIT_PROMPT="Do this: {request}"\n')
+    settings = load_settings(env)
+    assert settings.edit_model == "other/model"
+    assert settings.edit_prompt == "Do this: {request}"
