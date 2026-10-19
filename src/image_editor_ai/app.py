@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox
 from PIL import Image
 
 from image_editor_ai import APP_NAME
-from image_editor_ai.ai.openrouter import describe_image
+from image_editor_ai.ai.image_ai import describe_image
 from image_editor_ai.config import load_settings
 from image_editor_ai.imaging import SUPPORTED_EXTENSIONS, load_image
 from image_editor_ai.platform_utils import IS_MACOS, shortcut_event, shortcut_label

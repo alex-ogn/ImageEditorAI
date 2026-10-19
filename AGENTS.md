@@ -19,7 +19,8 @@ for creative and interactive AI features over images.
    - Layout math uses widget sizes (`winfo_width`/`winfo_height`, `<Configure>` events) — no
      hardcoded screen sizes or DPI assumptions.
 2. **Tech stack:** Python 3.12 + tkinter + Pillow. AI features use models from
-   [OpenRouter](https://openrouter.ai) via `httpx` (`src/image_editor_ai/ai/openrouter.py`).
+   [OpenRouter](https://openrouter.ai) via `httpx` (`src/image_editor_ai/ai/openrouter.py`);
+   image-specific AI logic lives in `src/image_editor_ai/ai/image_ai.py`.
 3. **Secrets:** the OpenRouter API key lives only in `.env` (loaded by `config.py` with
    python-dotenv). Never commit `.env`, never log or display the key. Document new settings
    in `.env.example`.
@@ -43,7 +44,8 @@ src/image_editor_ai/
   ui/header.py      logo + command bar
   ui/image_view.py  canvas that shows the fitted image
   ui/description_panel.py  right-side panel with the AI image description
-  ai/openrouter.py  OpenRouter API client
+  ai/openrouter.py  generic OpenRouter API client (chat, response parsing)
+  ai/image_ai.py    AI features over images (upload prep, vision payloads, describe)
 tests/              pytest tests
 ```
 
