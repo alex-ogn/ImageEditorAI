@@ -10,12 +10,17 @@ from image_editor_ai.ui import theme
 
 
 class Header(tk.Frame):
-    def __init__(self, master: tk.Misc, on_open: Callable[[], None]) -> None:
+    def __init__(
+        self,
+        master: tk.Misc,
+        on_open: Callable[[], None],
+        on_describe: Callable[[], None],
+    ) -> None:
         super().__init__(master, bg=theme.HEADER_BG, height=theme.HEADER_HEIGHT)
         self.pack_propagate(False)
 
         self._build_logo()
-        self._build_command_bar(on_open)
+        self._build_command_bar(on_open, on_describe)
 
     def _build_logo(self) -> None:
         base = tkfont.nametofont("TkDefaultFont")
@@ -39,14 +44,23 @@ class Header(tk.Frame):
             logo, text=APP_NAME, bg=theme.HEADER_BG, fg=theme.HEADER_FG, font=title_font
         ).pack(side=tk.LEFT, padx=(8, 0))
 
-    def _build_command_bar(self, on_open: Callable[[], None]) -> None:
+    def _build_command_bar(
+        self, on_open: Callable[[], None], on_describe: Callable[[], None]
+    ) -> None:
         bar = tk.Frame(self, bg=theme.HEADER_BG)
         bar.pack(side=tk.LEFT, fill=tk.Y, pady=10)
 
         self._button(bar, f"Open…  ({shortcut_label('o')})", on_open)
-        # Placeholders for upcoming AI features.
-        self._button(bar, "Describe", None)
+        self.describe_button = self._button(bar, "Generate Description", on_describe)
+        # Placeholder for an upcoming AI feature.
         self._button(bar, "AI Edit", None)
+
+    def set_describe_busy(self, busy: bool) -> None:
+        self.describe_button.config(
+            text="Generating…" if busy else "Generate Description",
+            state=tk.DISABLED if busy else tk.NORMAL,
+            cursor="" if busy else "hand2",
+        )
 
     @staticmethod
     def _button(parent: tk.Misc, text: str, command: Callable[[], None] | None) -> tk.Button:

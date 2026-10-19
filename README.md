@@ -19,7 +19,9 @@ over images. Built with Python, tkinter and Pillow; AI features use models from
    ```bash
    cp .env.example .env
    ```
-   Then put your key in `OPENROUTER_API_KEY` inside `.env`.
+   Then put your key in `OPENROUTER_API_KEY` inside `.env`. The vision model
+   (`OPENROUTER_MODEL`) and the prompt used by **Generate Description** (`DESCRIBE_PROMPT`)
+   are preset there and can be changed if needed.
 
 ## Run
 

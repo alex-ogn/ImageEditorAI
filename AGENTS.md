@@ -42,6 +42,7 @@ src/image_editor_ai/
   platform_utils.py OS detection, shortcut helpers
   ui/header.py      logo + command bar
   ui/image_view.py  canvas that shows the fitted image
+  ui/description_panel.py  right-side panel with the AI image description
   ai/openrouter.py  OpenRouter API client
 tests/              pytest tests
 ```

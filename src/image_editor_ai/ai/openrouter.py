@@ -8,6 +8,37 @@ from PIL import Image
 
 from image_editor_ai import APP_NAME
 from image_editor_ai.config import Settings
+from image_editor_ai.imaging import fit_size
+
+# Longest side sent to the model; larger images are scaled down (ratio kept).
+MAX_UPLOAD_SIDE = 1536
+
+
+class OpenRouterError(RuntimeError):
+    """Raised when the API answers without usable content."""
+
+
+def prepare_for_upload(image: Image.Image, max_side: int = MAX_UPLOAD_SIDE) -> Image.Image:
+    """Copy of the image in RGB, scaled down uniformly so it fits max_side."""
+    prepared = image.convert("RGB")
+    if max(prepared.size) > max_side:
+        size = fit_size(*prepared.size, max_side, max_side)
+        prepared = prepared.resize(size, Image.Resampling.LANCZOS)
+    return prepared
+
+
+def extract_content(data: dict) -> str:
+    """Text of the first choice of a chat completion response."""
+    if "error" in data:
+        message = data["error"].get("message", "unknown error")
+        raise OpenRouterError(f"OpenRouter error: {message}")
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise OpenRouterError("Unexpected response from OpenRouter.") from exc
+    if not content or not content.strip():
+        raise OpenRouterError("The model returned an empty response.")
+    return content.strip()
 
 
 def image_to_data_url(image: Image.Image, fmt: str = "PNG") -> str:
@@ -22,7 +53,10 @@ def build_image_message(prompt: str, image: Image.Image) -> dict:
         "role": "user",
         "content": [
             {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": image_to_data_url(image)}},
+            {
+                "type": "image_url",
+                "image_url": {"url": image_to_data_url(prepare_for_upload(image), "JPEG")},
+            },
         ],
     }
 
@@ -47,8 +81,16 @@ class OpenRouterClient:
         return response.json()
 
     def ask_about_image(self, prompt: str, image: Image.Image) -> str:
-        data = self.chat([build_image_message(prompt, image)])
-        return data["choices"][0]["message"]["content"]
+        return extract_content(self.chat([build_image_message(prompt, image)]))
 
     def close(self) -> None:
         self._http.close()
+
+
+def describe_image(settings: Settings, image: Image.Image) -> str:
+    """Ask the configured vision model for a description, using the prompt from .env."""
+    client = OpenRouterClient(settings)
+    try:
+        return client.ask_about_image(settings.describe_prompt, image)
+    finally:
+        client.close()
